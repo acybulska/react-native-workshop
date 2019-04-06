@@ -1,12 +1,12 @@
 import React, { Component } from 'react';
-import { StyleSheet, View, Text, ScrollView, TextInput } from 'react-native';
+import { StyleSheet, View, Text, ScrollView, TextInput, AsyncStorage } from 'react-native';
+import {createStackNavigator, createAppContainer} from 'react-navigation';
+import console from 'console';
 
-export default class App extends Component {
+const toDoListKey = 'myToDoList'
+
+class Home extends Component {
   state = {
-    notes: new Array(10).fill(0).map((a, i) => i).map(i => ({
-      title: `Title ${i}`,
-      content: `Content ${i} is cool Content ${i} is cool Content ${i} is cool`
-    })),
     toDoList: [
       { id: 1, type: 'Task', content: 'content' },
       { id: 2, type: 'Task', content: 'content' },
@@ -15,8 +15,13 @@ export default class App extends Component {
       { id: 5, type: 'Task', content: 'content' }
     ],
     doneList: [],
-    inputValue: ''
+    inputValue: '',
+    testValue: ''
   };
+
+  componentWillUpdate() {
+    AsyncStorage.getItem(toDoListKey).then(testValue => this.setState({ testValue }));
+  }
 
   submit = () => {
     let lastId = -1;
@@ -28,15 +33,19 @@ export default class App extends Component {
       toDoList: state.toDoList.concat({
         id: lastId + 1,
         type: 'Task',
-        content: this.state.inputValue
-      })
-    }));
+        content: state.inputValue
+      }),
+      inputValue: ''
+    }), () => {
+      AsyncStorage.setItem(toDoListKey, JSON.stringify(this.state.toDoList))
+    })
   }
 
   render() {
     return (
       <View style={styles.container}>
-        <Text style={[styles.header, styles.title]}>My tasks today</Text>
+        <Text style={[styles.header, styles.title]} onPress={() => {this.props.navigation.navigate('Details', Details)}}>My tasks today</Text>
+        <Text>{this.state.testValue}</Text>
         <View style={styles.newTask}>
           <Text style={styles.header}>Add new task</Text>
           <TextInput
@@ -46,7 +55,6 @@ export default class App extends Component {
             onSubmitEditing={this.submit}
             onChangeText={(inputValue) => this.setState({ inputValue })}
             value={this.state.inputValue}
-            autoFocus={true}
           />
         </View>
         <ScrollView style={styles.scrollView}>
@@ -57,13 +65,15 @@ export default class App extends Component {
               <Text>{content}</Text>
             </View>
           ))}
-          {/* <Text style={styles.header}>Completed</Text>
-          {this.state.notes.map(({ title, content }) => (
-            <View key={title} style={styles.item}>
-              <Text>{title}</Text>
-              <Text>{content}</Text>
-            </View>
-          ))} */}
+          <Text style={styles.header}>Completed</Text>
+          {
+            this.state.doneList.map(({ id, type, content }) => (
+              <View key={id} style={styles.item}>
+                <Text>{type}</Text>
+                <Text>{content}</Text>
+              </View>
+            ))
+          }
         </ScrollView>
       </View>
     );
@@ -111,3 +121,33 @@ const styles = StyleSheet.create({
 
   }
 });
+
+class Details extends Component {
+  render() {
+    return (
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+        <Text>Details Screen</Text>
+      </View>
+    );
+  }  
+}
+
+const AppNavigator = createStackNavigator({
+  Home: {
+    screen: Home
+  },
+  Details: {
+    screen: Details
+  },
+}, 
+{
+  initialRouteName: 'Home'
+});
+
+const AppContainer = createAppContainer(AppNavigator); 
+
+export default class App extends Component {
+  render() {
+    return <AppContainer />;
+  }
+}
